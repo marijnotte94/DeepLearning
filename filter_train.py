@@ -11,13 +11,9 @@ if not os.path.exists(train_filtered_dir):
 filename = 'data/all_data_info.csv'
 df = pd.read_csv(filename)
 
-# drop rows that have no date
-df.dropna(axis=0, subset=['date'], inplace=True)
-
 # drop rows that have no exact date
-date = df['date'].astype('str')
-mask = (date.str.len() <= 4)
-df = df.loc[mask]
+df = df[pd.to_numeric(df['date'], errors='coerce').notnull()]
+df['date'] = pd.to_numeric(df['date'], errors='coerce', downcast='signed')
 
 # drop rows that are in test set
 df = df[df['in_train']]
