@@ -56,10 +56,9 @@ df = df[df['count'] > 99]
 df = df.drop(['artist_group', 'in_train'], axis=1)
 
 # create train and test sets
-df_train, df_test = train_test_split(df, test_size=0.2, stratify=df['date'].values)
+df_train, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df['date'].values)
 df_train = df_train.drop(['count'], axis=1)
 df_test = df_test.drop(['count'], axis=1)
-
 
 # create lists to hold the filenames and labels
 train_filenames = list(df_train['new_filename'].values)
