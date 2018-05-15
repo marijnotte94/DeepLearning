@@ -12,6 +12,12 @@ target_dir = os.path.join(data_dir, str(fine_grained))
 filename = 'data/all_data_info.csv'
 df = pd.read_csv(filename)
 
+# remove circas
+df['date'] = df['date'].str.replace('c.', '')
+
+# convert datetime values to only year
+df['date'] = df['date'].str.replace('.*\s', '')
+
 # drop rows that have no exact date
 df = df[pd.to_numeric(df['date'], errors='coerce').notnull()]
 df['date'] = pd.to_numeric(df['date'], errors='coerce', downcast='signed')
