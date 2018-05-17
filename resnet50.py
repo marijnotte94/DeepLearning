@@ -1,48 +1,15 @@
-import numpy as np
-import matplotlib.pyplot as plt
 from keras.preprocessing import image
 from keras.layers import Input, Flatten, Dense
 from keras.models import Model
 from keras import optimizers
 from keras.callbacks import EarlyStopping
 from keras.applications import resnet50
-from sklearn.metrics import confusion_matrix
 import keras.backend as K
-import itertools
 import os
+import plots
 
 def mean_absolute_bin_error(y_true, y_pred):
     return K.mean(K.abs(K.argmax(y_true) - K.argmax(y_pred)))
-
-def plot_confusion_matrix(generator, predictions):
-    classes = generator.class_indices.keys()
-
-    y_true = generator.classes
-    y_pred = predictions.argmax(axis=-1)
-
-    # create normalized confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
-    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-
-    plt.figure(figsize=(10, 10))
-    plt.imshow(cm, cmap=plt.cm.Blues)
-    plt.title('Confusion Matrix')
-    plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, list(classes), rotation=90)
-    plt.yticks(tick_marks, list(classes))
-
-    fmt = '.2f'
-    thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
-
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    plt.savefig('confusion_matrix_resnet50', ext='png', dpi=150)
-    plt.show()
 
 def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
     # import model pretrained on imagenet without last layer
@@ -73,13 +40,14 @@ def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
 # hyperparameters
 learning_rate = 0.001
 batch_size = 16
-num_epochs = 100
-num_frozen_layers = 0 # freeze first num layers, ResNet50 has 175 layers
+num_epochs = 1
+num_frozen_layers = 175 # freeze first num layers, ResNet50 has 175 layers
 
 # choose bin size
 bin_size = 20 # [1, 5, 10, 20, 50, 100] years
 train_dir = os.path.join('data', str(bin_size), 'train')
 test_dir = os.path.join('data', str(bin_size), 'test')
+figures_dir = os.path.join('figures', str(bin_size))
 
 # train and test image data generators
 train_datagen = image.ImageDataGenerator(validation_split=0.1)
@@ -121,37 +89,19 @@ early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=2)
 history = pretrained_model.fit_generator(train_generator, validation_data=validation_generator,
                                          epochs=num_epochs, callbacks=[early_stopping])
 
-# summarize history for accuracy
-plt.plot(history.history['acc'])
-plt.plot(history.history['val_acc'])
-plt.title('Model Accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Validation'], loc='upper left')
-plt.savefig('accuracy_epochs_resnet50', ext='png', dpi=150)
-plt.show()
-
-# summarize history for loss
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('Model Loss')
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.legend(['Train', 'Validation'], loc='upper left')
-plt.savefig('loss_epochs_resnet50', ext='png', dpi=150)
-plt.show()
+# plot accuracy and loss for train and validation
+if num_epochs > 1:
+    plots.plot_accuracy(figures_dir, 'accuracy_epochs_resnet50', history)
+    plots.plot_loss(figures_dir, 'loss_epochs_resnet50', history)
 
 # evaluate on test set
-print('Evaluate on test set')
 test_loss = pretrained_model.evaluate_generator(test_generator, use_multiprocessing=True)
 print('Loss test set: ' + str(test_loss[0]))
 print('Accuracy test set: ' + str(test_loss[1]))
 print('Mean absolute bin error test set: ' + str(test_loss[2]))
 
 # predict on test set
-print('Predict on test set')
 predictions = pretrained_model.predict_generator(test_generator, use_multiprocessing=True)
 
 # plot confusion matrix
-print('Plot confusion matrix')
-plot_confusion_matrix(test_generator, predictions)
+plots.plot_confusion_matrix(figures_dir, 'confusion_matrix_resnet50', test_generator, predictions, show_values=True)
