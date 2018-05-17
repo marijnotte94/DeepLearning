@@ -22,9 +22,10 @@ def create_dir(train_dir, target_dir, filenames, labels):
 data_dir = 'data/'
 train_dir = os.path.join(data_dir, 'train')
 
-fine_grained = 1 #years
-train_target_dir = os.path.join(data_dir, str(fine_grained), 'train')
-test_target_dir = os.path.join(data_dir, str(fine_grained), 'test')
+def train_target_dir(bin_size):
+    return os.path.join(data_dir, str(bin_size), 'train')
+def test_target_dir(bin_size):
+    return os.path.join(data_dir, str(bin_size), 'test')
 
 # read csv with all data info
 filename = 'data/all_data_info.csv'
@@ -55,6 +56,17 @@ df = df[df['count'] > 99]
 # drop artist_group and in_train columns
 df = df.drop(['artist_group', 'in_train'], axis=1)
 
+##
+def add_label(year, bin_size):
+    label = str(divmod(year, bin_size)[0]*bin_size) + "-" + str((1 + divmod(year, bin_size)[0])*bin_size-1)
+    return label
+
+df['5'] = df.date.apply(add_label,bin_size=5)
+df['10'] = df.date.apply(add_label,bin_size=10)
+df['20'] = df.date.apply(add_label,bin_size=20)
+df['50'] = df.date.apply(add_label,bin_size=50)
+df['100'] = df.date.apply(add_label,bin_size=100)
+
 # create train and test sets
 df_train, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df['date'].values)
 df_train = df_train.drop(['count'], axis=1)
@@ -69,5 +81,20 @@ test_labels = list(df_test['date'].values)
 print('Length test: %d' % len(test_filenames))
 
 # create directories for train and test
-create_dir(train_dir, train_target_dir, train_filenames, train_labels)
-create_dir(train_dir, test_target_dir, test_filenames, test_labels)
+create_dir(train_dir, train_target_dir(1), train_filenames, train_labels)
+create_dir(train_dir, test_target_dir(1), test_filenames, test_labels)
+
+create_dir(train_dir, train_target_dir(5), train_filenames, list(df_train['5'].values))
+create_dir(train_dir, test_target_dir(5), test_filenames, list(df_train['5'].values))
+
+create_dir(train_dir, train_target_dir(10), train_filenames, list(df_train['10'].values))
+create_dir(train_dir, test_target_dir(10), test_filenames, list(df_train['10'].values))
+
+create_dir(train_dir, train_target_dir(20), train_filenames, list(df_train['20'].values))
+create_dir(train_dir, test_target_dir(20), test_filenames, list(df_train['20'].values))
+
+create_dir(train_dir, train_target_dir(50), train_filenames, list(df_train['50'].values))
+create_dir(train_dir, test_target_dir(50), test_filenames, list(df_train['50'].values))
+
+create_dir(train_dir, train_target_dir(100), train_filenames, list(df_train['100'].values))
+create_dir(train_dir, test_target_dir(100), test_filenames, list(df_train['100'].values))
