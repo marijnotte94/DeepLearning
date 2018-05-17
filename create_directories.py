@@ -85,16 +85,16 @@ create_dir(train_dir, train_target_dir(1), train_filenames, train_labels)
 create_dir(train_dir, test_target_dir(1), test_filenames, test_labels)
 
 create_dir(train_dir, train_target_dir(5), train_filenames, list(df_train['5'].values))
-create_dir(train_dir, test_target_dir(5), test_filenames, list(df_train['5'].values))
+create_dir(train_dir, test_target_dir(5), test_filenames, list(df_test['5'].values))
 
 create_dir(train_dir, train_target_dir(10), train_filenames, list(df_train['10'].values))
-create_dir(train_dir, test_target_dir(10), test_filenames, list(df_train['10'].values))
+create_dir(train_dir, test_target_dir(10), test_filenames, list(df_test['10'].values))
 
 create_dir(train_dir, train_target_dir(20), train_filenames, list(df_train['20'].values))
-create_dir(train_dir, test_target_dir(20), test_filenames, list(df_train['20'].values))
+create_dir(train_dir, test_target_dir(20), test_filenames, list(df_test['20'].values))
 
 create_dir(train_dir, train_target_dir(50), train_filenames, list(df_train['50'].values))
-create_dir(train_dir, test_target_dir(50), test_filenames, list(df_train['50'].values))
+create_dir(train_dir, test_target_dir(50), test_filenames, list(df_test['50'].values))
 
 create_dir(train_dir, train_target_dir(100), train_filenames, list(df_train['100'].values))
-create_dir(train_dir, test_target_dir(100), test_filenames, list(df_train['100'].values))
+create_dir(train_dir, test_target_dir(100), test_filenames, list(df_test['100'].values))
