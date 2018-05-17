@@ -7,6 +7,8 @@ from keras import optimizers
 from keras.callbacks import EarlyStopping
 from keras.applications import resnet50
 from sklearn.metrics import confusion_matrix
+import keras.backend as K
+import os
 
 def mean_absolute_error_years(generator, predictions):
     # get class labels
@@ -24,6 +26,9 @@ def mean_absolute_error_years(generator, predictions):
         mean_absolute_error.append(abs(int(y_true) - int(y_pred)))
 
     return round(sum(mean_absolute_error) / len(mean_absolute_error))
+
+def mean_absolute_error_bin(y_true, y_pred):
+    return K.mean(K.abs(K.argmax(y_true) - K.argmax(y_pred)))
 
 def plot_confusion_matrix(generator, predictions):
     # get class labels
@@ -73,9 +78,14 @@ def pretrained_model(img_shape, num_classes):
 
     # compile model
     pretrained_model = Model(inputs=keras_input, outputs=x)
-    pretrained_model.compile(loss='categorical_crossentropy', optimizer=optimizers.adam(lr=0.001), metrics=['accuracy'])
+    pretrained_model.compile(loss='categorical_crossentropy', optimizer=optimizers.adam(lr=0.001), metrics=['accuracy', mean_absolute_error_bin])
 
     return pretrained_model
+
+# choose bin size
+bin_size = 20 # [1, 5, 10, 20, 50, 100] years
+train_dir = os.path.join('data', str(bin_size), 'train')
+test_dir = os.path.join('data', str(bin_size), 'test')
 
 # train and test image data generators
 train_datagen = image.ImageDataGenerator(validation_split=0.1)
@@ -83,7 +93,7 @@ test_datagen = image.ImageDataGenerator()
 
 # generate training batches
 train_generator = train_datagen.flow_from_directory(
-    'data/1/train',
+    train_dir,
     target_size=(224, 224),
     batch_size=16,
     class_mode='categorical',
@@ -91,7 +101,7 @@ train_generator = train_datagen.flow_from_directory(
 
 # generate validation batches
 validation_generator = train_datagen.flow_from_directory(
-    'data/1/train',
+    train_dir,
     target_size=(224, 224),
     batch_size=16,
     class_mode='categorical',
@@ -99,7 +109,7 @@ validation_generator = train_datagen.flow_from_directory(
 
 # generate test batches
 test_generator = test_datagen.flow_from_directory(
-    'data/1/test',
+    test_dir,
     target_size=(224, 224),
     batch_size=16,
     class_mode='categorical',
@@ -118,7 +128,7 @@ plt.plot(history.history['val_acc'])
 plt.title('model accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.savefig('accuracy_epochs_resnet50', ext='png', dpi=150)
 plt.show()
 
@@ -128,7 +138,7 @@ plt.plot(history.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.savefig('loss_epochs_resnet50', ext='png', dpi=150)
 plt.show()
 
@@ -140,8 +150,8 @@ print('Loss test set: ' + str(test_loss[0]) + ', Accuracy test set: ' + str(test
 predictions = pretrained_model.predict_generator(test_generator)
 
 # mean absolute error in years
-mean_absolute_error = mean_absolute_error_years(test_generator, predictions)
-print('Mean absolute error in years: ' + str(mean_absolute_error))
+#mean_absolute_error = mean_absolute_error_years(test_generator, predictions)
+#print('Mean absolute error in years: ' + str(mean_absolute_error))
 
 # plot confusion matrix
 plot_confusion_matrix(test_generator, predictions)
