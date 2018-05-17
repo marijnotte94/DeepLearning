@@ -8,63 +8,47 @@ from keras.callbacks import EarlyStopping
 from keras.applications import resnet50
 from sklearn.metrics import confusion_matrix
 import keras.backend as K
+import itertools
 import os
 
-def mean_absolute_error_years(generator, predictions):
-    # get class labels
-    class_dict = generator.class_indices
-    class_dict = {v: k for k, v in class_dict.items()}
-
-    # get predicted classes
-    predictions_class = predictions.argmax(axis=-1)
-
-    # calculate mean absolute error in years
-    mean_absolute_error = []
-    for prediction in predictions_class:
-        y_pred = class_dict[prediction]
-        y_true = class_dict[np.argmax(generator.next()[1])]
-        mean_absolute_error.append(abs(int(y_true) - int(y_pred)))
-
-    return round(sum(mean_absolute_error) / len(mean_absolute_error))
-
-def mean_absolute_error_bin(y_true, y_pred):
+def mean_absolute_bin_error(y_true, y_pred):
     return K.mean(K.abs(K.argmax(y_true) - K.argmax(y_pred)))
 
 def plot_confusion_matrix(generator, predictions):
-    # get class labels
-    class_dict = generator.class_indices
-    class_dict = {v: k for k, v in class_dict.items()}
+    classes = generator.class_indices.keys()
 
-    # get predicted classes
-    predictions_class = predictions.argmax(axis=-1)
+    y_true = generator.classes
+    y_pred = predictions.argmax(axis=-1)
 
-    # create lists with predictions and labels
-    y_true = []
-    y_pred = []
-    for prediction in predictions_class:
-        y_pred.append(class_dict[prediction])
-        y_true.append(class_dict[np.argmax(generator.next()[1])])
-
+    # create normalized confusion matrix
     cm = confusion_matrix(y_true, y_pred)
+    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(10, 10))
     plt.imshow(cm, cmap=plt.cm.Blues)
     plt.title('Confusion Matrix')
     plt.colorbar()
-    tick_marks = np.arange(len(class_dict))
-    plt.xticks(tick_marks, list(class_dict.values()), rotation=90)
-    plt.yticks(tick_marks, list(class_dict.values()))
-    plt.tight_layout()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, list(classes), rotation=90)
+    plt.yticks(tick_marks, list(classes))
+
+    fmt = '.2f'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    plt.savefig('confusion_matrix', ext='png', dpi=150)
+    plt.savefig('confusion_matrix_resnet50', ext='png', dpi=150)
     plt.show()
 
-def pretrained_model(img_shape, num_classes):
+def pretrained_model(img_shape, num_classes, learning_rate):
     # import model pretrained on imagenet without last layer
     resnet_model = resnet50.ResNet50(include_top=False, weights='imagenet')
-    #for layer in resnet_model.layers:
-    #    layer.trainable = False
+    for layer in resnet_model.layers:
+        layer.trainable = False
 
     # input shape
     keras_input = Input(shape=img_shape, name='image_input')
@@ -78,9 +62,16 @@ def pretrained_model(img_shape, num_classes):
 
     # compile model
     pretrained_model = Model(inputs=keras_input, outputs=x)
-    pretrained_model.compile(loss='categorical_crossentropy', optimizer=optimizers.adam(lr=0.001), metrics=['accuracy', mean_absolute_error_bin])
+    pretrained_model.compile(loss='categorical_crossentropy',
+                             optimizer=optimizers.adam(lr=learning_rate),
+                             metrics=['accuracy', mean_absolute_bin_error])
 
     return pretrained_model
+
+# hyperparameters
+learning_rate = 0.001
+batch_size = 16
+num_epochs = 100
 
 # choose bin size
 bin_size = 20 # [1, 5, 10, 20, 50, 100] years
@@ -95,7 +86,7 @@ test_datagen = image.ImageDataGenerator()
 train_generator = train_datagen.flow_from_directory(
     train_dir,
     target_size=(224, 224),
-    batch_size=16,
+    batch_size=batch_size,
     class_mode='categorical',
     subset='training')
 
@@ -103,7 +94,7 @@ train_generator = train_datagen.flow_from_directory(
 validation_generator = train_datagen.flow_from_directory(
     train_dir,
     target_size=(224, 224),
-    batch_size=16,
+    batch_size=batch_size,
     class_mode='categorical',
     subset='validation')
 
@@ -111,47 +102,49 @@ validation_generator = train_datagen.flow_from_directory(
 test_generator = test_datagen.flow_from_directory(
     test_dir,
     target_size=(224, 224),
-    batch_size=16,
+    batch_size=batch_size,
     class_mode='categorical',
     shuffle=False)
 
 # compile model
-pretrained_model = pretrained_model(train_generator.image_shape, train_generator.num_classes)
+pretrained_model = pretrained_model(train_generator.image_shape, train_generator.num_classes, learning_rate)
 
 # training the model
 early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=2)
-history = pretrained_model.fit_generator(train_generator, validation_data=validation_generator, epochs=100, callbacks=[early_stopping])
+history = pretrained_model.fit_generator(train_generator, validation_data=validation_generator,
+                                         epochs=num_epochs, callbacks=[early_stopping])
 
 # summarize history for accuracy
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper left')
+plt.title('Model Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
 plt.savefig('accuracy_epochs_resnet50', ext='png', dpi=150)
 plt.show()
 
 # summarize history for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
-plt.title('model loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper left')
+plt.title('Model Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
 plt.savefig('loss_epochs_resnet50', ext='png', dpi=150)
 plt.show()
 
-# evaluate loss and accuracy on test set
-test_loss = pretrained_model.evaluate_generator(test_generator)
-print('Loss test set: ' + str(test_loss[0]) + ', Accuracy test set: ' + str(test_loss[1]))
+# evaluate on test set
+print('Evaluate on test set')
+test_loss = pretrained_model.evaluate_generator(test_generator, use_multiprocessing=True)
+print('Loss test set: ' + str(test_loss[0]))
+print('Accuracy test set: ' + str(test_loss[1]))
+print('Mean absolute bin error test set: ' + str(test_loss[2]))
 
 # predict on test set
-predictions = pretrained_model.predict_generator(test_generator)
-
-# mean absolute error in years
-#mean_absolute_error = mean_absolute_error_years(test_generator, predictions)
-#print('Mean absolute error in years: ' + str(mean_absolute_error))
+print('Predict on test set')
+predictions = pretrained_model.predict_generator(test_generator, use_multiprocessing=True)
 
 # plot confusion matrix
+print('Plot confusion matrix')
 plot_confusion_matrix(test_generator, predictions)

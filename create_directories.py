@@ -31,6 +31,9 @@ def test_target_dir(bin_size):
 filename = 'data/all_data_info.csv'
 df = pd.read_csv(filename)
 
+# drop rows that are in test set
+df = df[df['in_train']]
+
 # remove circas
 df['date'] = df['date'].str.replace('c.', '')
 
@@ -43,9 +46,6 @@ df['date'] = pd.to_numeric(df['date'], errors='coerce', downcast='signed')
 
 # drop rows that have dates before 1060, these are mislabeled
 df = df[df['date'] > 1059]
-
-# drop rows that are in test set
-df = df[df['in_train']]
 
 # keep only rows that have dates that appear at least 100 times
 count = pd.DataFrame(df.date.value_counts().reset_index())
