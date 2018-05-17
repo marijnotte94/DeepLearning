@@ -44,10 +44,12 @@ def plot_confusion_matrix(generator, predictions):
     plt.savefig('confusion_matrix_resnet50', ext='png', dpi=150)
     plt.show()
 
-def pretrained_model(img_shape, num_classes, learning_rate):
+def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
     # import model pretrained on imagenet without last layer
     resnet_model = resnet50.ResNet50(include_top=False, weights='imagenet')
-    for layer in resnet_model.layers:
+
+    # freeze layers
+    for layer in resnet_model.layers[:num_frozen_layers]:
         layer.trainable = False
 
     # input shape
@@ -72,6 +74,7 @@ def pretrained_model(img_shape, num_classes, learning_rate):
 learning_rate = 0.001
 batch_size = 16
 num_epochs = 100
+num_frozen_layers = 0 # freeze first num layers, ResNet50 has 175 layers
 
 # choose bin size
 bin_size = 20 # [1, 5, 10, 20, 50, 100] years
@@ -107,7 +110,11 @@ test_generator = test_datagen.flow_from_directory(
     shuffle=False)
 
 # compile model
-pretrained_model = pretrained_model(train_generator.image_shape, train_generator.num_classes, learning_rate)
+pretrained_model = pretrained_model(train_generator.image_shape, train_generator.num_classes,
+                                    learning_rate, num_frozen_layers)
+
+# model summary
+pretrained_model.summary()
 
 # training the model
 early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=2)
