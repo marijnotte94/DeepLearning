@@ -58,8 +58,8 @@ def plot_confusion_matrix(generator, predictions):
 def pretrained_model(img_shape, num_classes):
     # import model pretrained on imagenet without last layer
     resnet_model = resnet50.ResNet50(include_top=False, weights='imagenet')
-    for layer in resnet_model.layers:
-        layer.trainable = False
+    #for layer in resnet_model.layers:
+    #    layer.trainable = False
 
     # input shape
     keras_input = Input(shape=img_shape, name='image_input')
@@ -110,7 +110,7 @@ pretrained_model = pretrained_model(train_generator.image_shape, train_generator
 
 # training the model
 early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=2)
-history = pretrained_model.fit_generator(train_generator, validation_data=validation_generator, epochs=10, callbacks=[early_stopping])
+history = pretrained_model.fit_generator(train_generator, validation_data=validation_generator, epochs=100, callbacks=[early_stopping])
 
 # summarize history for accuracy
 plt.plot(history.history['acc'])
@@ -119,6 +119,7 @@ plt.title('model accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('accuracy_epochs_resnet50', ext='png', dpi=150)
 plt.show()
 
 # summarize history for loss
@@ -128,6 +129,7 @@ plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('loss_epochs_resnet50', ext='png', dpi=150)
 plt.show()
 
 # evaluate loss and accuracy on test set
