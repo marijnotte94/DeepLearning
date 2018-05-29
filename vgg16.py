@@ -14,6 +14,11 @@ def mean_absolute_bin_error(y_true, y_pred):
 def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
     # import model pretrained on imagenet without last layer
     vgg_model = vgg16.VGG16(include_top=False, weights='imagenet')
+    vgg_full = vgg16.VGG16(include_top=True, weights='imagenet')
+
+    # extract last layers
+    fc1_layer = vgg_full.get_layer('fc1')
+    fc2_layer = vgg_full.get_layer('fc2')
 
     # freeze layers
     for layer in vgg_model.layers[:num_frozen_layers]:
@@ -26,10 +31,14 @@ def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
     output = vgg_model(keras_input)
 
     # add the fully-connected layers
-    x = Dense(4096, activation='relu', name='fc6')(output)
+    x = Flatten(name='flatten')(output)
+    x = Dense(4096, activation='relu', name='fc6')(x)
     x = Dense(4096, activation='relu', name='fc7')(x)
-    x = Flatten(name='flatten')(x)
     x = Dense(num_classes, activation='softmax', name='fc8')(x)
+    # x = Flatten(name='flatten')(output)
+    # x = fc1_layer(x)
+    # x = fc2_layer(x)
+    # x = Dense(num_classes, activation='softmax', name='fc8')(x)
 
     # compile model
     pretrained_model = Model(inputs=keras_input, outputs=x)
@@ -42,13 +51,13 @@ def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
 # hyperparameters
 learning_rate = 0.001
 batch_size = 16
-num_epochs = 100
-num_frozen_layers = 19 # freeze first num layers, VGG16 has 19 layers
+num_epochs = 1
+num_frozen_layers = 0 # freeze first num layers, VGG16 has 19 layers
 continue_from_checkpoint = False
 checkpoint_filename = 'vgg16_best-05-0.59.hdf5' # change to checkpoint filename
 
 # choose bin size
-bin_size = 100 # [1, 5, 10, 20, 50, 100] years
+bin_size = 20 # [1, 5, 10, 20, 50, 100] years
 train_dir = os.path.join('data', str(bin_size), 'train')
 test_dir = os.path.join('data', str(bin_size), 'test')
 figures_dir = os.path.join('figures', str(bin_size))
@@ -111,13 +120,13 @@ if num_epochs > 1:
     plots.plot_loss(figures_dir, 'loss_epochs_vgg16', history)
 
 # evaluate on test set
-test_loss = pretrained_model.evaluate_generator(test_generator, use_multiprocessing=True)
+test_loss = pretrained_model.evaluate_generator(test_generator)
 print('Loss test set: ' + str(test_loss[0]))
 print('Accuracy test set: ' + str(test_loss[1]))
 print('Mean absolute bin error test set: ' + str(test_loss[2]))
 
 # predict on test set
-predictions = pretrained_model.predict_generator(test_generator, use_multiprocessing=True)
+predictions = pretrained_model.predict_generator(test_generator)
 
 # plot confusion matrix
 plots.plot_confusion_matrix(figures_dir, 'confusion_matrix_vgg16', test_generator, predictions, show_values=True)
