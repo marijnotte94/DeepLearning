@@ -50,7 +50,7 @@ def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
 
 # hyperparameters
 learning_rate = 0.001
-batch_size = 16
+batch_size = 32
 num_epochs = 1
 num_frozen_layers = 0 # freeze first num layers, VGG16 has 19 layers
 continue_from_checkpoint = False
@@ -63,8 +63,8 @@ test_dir = os.path.join('data', str(bin_size), 'test')
 figures_dir = os.path.join('figures', str(bin_size))
 
 # train and test image data generators
-train_datagen = image.ImageDataGenerator(validation_split=0.1)
-test_datagen = image.ImageDataGenerator()
+train_datagen = image.ImageDataGenerator(rescale=1./255, validation_split=0.1)
+test_datagen = image.ImageDataGenerator(rescale=1./255)
 
 # generate training batches
 train_generator = train_datagen.flow_from_directory(train_dir,
