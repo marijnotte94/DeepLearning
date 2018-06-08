@@ -30,26 +30,35 @@ def plot_loss(figures_dir, filename, history):
     plt.savefig(os.path.join(figures_dir, filename), ext='png', dpi=150)
     plt.show()
 
-def plot_confusion_matrix(figures_dir, filename, generator, predictions, show_values=False):
+def plot_confusion_matrix(figures_dir, filename, test_gen, test_length, label_encoder, predictions, show_values=False):
     if not os.path.isdir(figures_dir):
         os.makedirs(figures_dir)
 
-    classes = generator.class_indices.keys()
+    # get true labels from generator
+    y_true = []
+    for i in range(test_length):
+        _, label = next(test_gen)
+        y_true.append(label)
 
-    y_true = generator.classes
+    # inverse transform true labels
+    y_true = np.array(y_true).argmax(axis=-1)
+    y_true = label_encoder.inverse_transform(y_true)
+
+    # inverse transform prediction labels
     y_pred = predictions.argmax(axis=-1)
+    y_pred = label_encoder.inverse_transform(y_pred)
 
     # create normalized confusion matrix
     cm = confusion_matrix(y_true, y_pred)
-    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    #cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     plt.figure(figsize=(10, 10))
     plt.imshow(cm, cmap=plt.cm.Blues)
     plt.title('Confusion Matrix')
     plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, list(classes), rotation=90)
-    plt.yticks(tick_marks, list(classes))
+    tick_marks = np.arange(len(label_encoder.classes_))
+    plt.xticks(tick_marks, list(label_encoder.classes_), rotation=90)
+    plt.yticks(tick_marks, list(label_encoder.classes_))
 
     if show_values:
         fmt = '.2f'
