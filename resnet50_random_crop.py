@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from sklearn.utils import shuffle
 from sklearn.preprocessing import LabelEncoder
+from collections import Counter
 import os
 import plots
 
@@ -118,7 +119,7 @@ continue_from_checkpoint = False
 checkpoint_filename = 'resnet50_best-05-0.59.hdf5' # change to checkpoint filename
 
 # choose bin size and read train, validation and test data
-bin_size = '100' # [1, 5, 10, 20, 50, 100] years
+bin_size = '20' # [1, 5, 10, 20, 50, 100] years
 df_train = pd.read_csv(os.path.join('data', 'train.csv'), usecols=['filename', bin_size])
 df_validation = pd.read_csv(os.path.join('data', 'validation.csv'), usecols=['filename', bin_size])
 df_test = pd.read_csv(os.path.join('data', 'test.csv'), usecols=['filename', bin_size])
@@ -131,10 +132,14 @@ label_encoder = LabelEncoder()
 label_encoder = label_encoder.fit(df_train[bin_size])
 num_classes = len(label_encoder.classes_)
 
-# generators
+#compute class weights
+counter = Counter(label_encoder.transform(df_train[bin_size]))
+max_val = float(max(counter.values()))
+class_weights = {class_id : max_val/num_images for class_id, num_images in counter.items()}
+
+# train and validation generators
 train_gen = custom_generator(df_train, label_encoder, bin_size, True, (224, 224), batch_size)
 validation_gen = custom_generator(df_validation, label_encoder, bin_size, False, (224, 224), batch_size)
-test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
 
 # dir for saving figures
 figures_dir = os.path.join('figures', str(bin_size))
@@ -147,9 +152,8 @@ pretrained_model.summary()
 
 # training the model
 early_stopping = EarlyStopping(monitor='val_acc', min_delta=0, patience=2)
-history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train,
-                                         validation_data=validation_gen, validation_steps=nbatches_validation,
-                                         epochs=num_epochs)
+history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs, class_weight=class_weights)#,
+                                         #validation_data=validation_gen, validation_steps=nbatches_validation)
 
 # plot accuracy and loss for train and validation
 if num_epochs > 1:
@@ -157,15 +161,17 @@ if num_epochs > 1:
     plots.plot_loss(figures_dir, 'loss_epochs_resnet50', history)
 
 # evaluate on test set
+test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
 test_loss = pretrained_model.evaluate_generator(test_gen, steps=nbatches_test)
 print('Loss test set: ' + str(test_loss[0]))
 print('Accuracy test set: ' + str(test_loss[1]))
 print('Mean absolute bin error test set: ' + str(test_loss[2]))
 
 # predict on test set
+test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
 predictions = pretrained_model.predict_generator(test_gen, steps=nbatches_test)
 
-test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
 # plot confusion matrix
+test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
 plots.plot_confusion_matrix(figures_dir, 'confusion_matrix_resnet50',
                             test_gen, df_test.shape[0], label_encoder, predictions, show_values=True)
