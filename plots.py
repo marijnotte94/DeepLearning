@@ -50,7 +50,7 @@ def plot_confusion_matrix(figures_dir, filename, test_gen, test_length, label_en
 
     # create normalized confusion matrix
     cm = confusion_matrix(y_true, y_pred)
-    #cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     plt.figure(figsize=(10, 10))
     plt.imshow(cm, cmap=plt.cm.Blues)

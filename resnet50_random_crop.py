@@ -112,11 +112,9 @@ def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
 # hyperparameters
 learning_rate = 0.0001
 batch_size = 16
-num_epochs = 1
+num_epochs = 100
 num_frozen_layers = 0 # freeze first num layers, ResNet50 has 175 layers
-save_checkpoint = False
-continue_from_checkpoint = False
-checkpoint_filename = 'resnet50_best-05-0.59.hdf5' # change to checkpoint filename
+save_checkpoint = True
 
 # choose bin size and read train, validation and test data
 bin_size = '20' # [1, 5, 10, 20, 50, 100] years
@@ -150,10 +148,25 @@ pretrained_model = pretrained_model((224, 224, 3), num_classes, learning_rate, n
 # model summary
 pretrained_model.summary()
 
+# keep only a single checkpoint, the best over validation accuracy.
+checkpoint_dir = os.path.join('checkpoints', str(bin_size))
+if not os.path.isdir(checkpoint_dir):
+    os.makedirs(checkpoint_dir)
+checkpoint = ModelCheckpoint('{0}/resnet50_best.hdf5'.format(checkpoint_dir),
+                             monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+
 # training the model
 early_stopping = EarlyStopping(monitor='val_acc', min_delta=0, patience=2)
-history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs, class_weight=class_weights)#,
-                                         #validation_data=validation_gen, validation_steps=nbatches_validation)
+if save_checkpoint:
+    history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+                                             class_weight=class_weights,
+                                             validation_data=validation_gen, validation_steps=nbatches_validation,
+                                             callbacks=[early_stopping, checkpoint])
+else:
+    history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+                                             class_weight=class_weights,
+                                             validation_data=validation_gen, validation_steps=nbatches_validation,
+                                             callbacks=[early_stopping])
 
 # plot accuracy and loss for train and validation
 if num_epochs > 1:
