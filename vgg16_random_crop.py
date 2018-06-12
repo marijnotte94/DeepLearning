@@ -124,6 +124,7 @@ batch_size = 64
 num_epochs = 100
 num_frozen_layers = 19 # freeze first num layers, VGG16 has 19 layers
 save_checkpoint = True
+use_class_weights = True
 
 # choose bin size and read train, validation and test data
 bin_size = '20' # [1, 5, 10, 20, 50, 100] years
@@ -167,15 +168,25 @@ checkpoint = ModelCheckpoint('{0}/vgg16_best.hdf5'.format(checkpoint_dir),
 # training the model
 early_stopping = EarlyStopping(monitor='val_acc', min_delta=0, patience=2)
 if save_checkpoint:
-    history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
-                                             class_weight=class_weights,
-                                             validation_data=validation_gen, validation_steps=nbatches_validation,
-                                             callbacks=[early_stopping, checkpoint])
+    if use_class_weights:
+        history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+                                                class_weight=class_weights,
+                                                validation_data=validation_gen, validation_steps=nbatches_validation,
+                                                callbacks=[early_stopping, checkpoint])
+    else:
+        history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+                                                validation_data=validation_gen, validation_steps=nbatches_validation,
+                                                callbacks=[early_stopping, checkpoint])
 else:
-    history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
-                                             class_weight=class_weights,
-                                             validation_data=validation_gen, validation_steps=nbatches_validation,
-                                             callbacks=[early_stopping])
+    if use_class_weights:
+        history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+                                                class_weight=class_weights,
+                                                validation_data=validation_gen, validation_steps=nbatches_validation,
+                                                callbacks=[early_stopping])
+    else:
+        history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+                                                validation_data=validation_gen, validation_steps=nbatches_validation,
+                                                callbacks=[early_stopping])
 
 # plot accuracy and loss for train and validation
 if num_epochs > 1:
