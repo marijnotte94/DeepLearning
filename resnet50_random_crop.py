@@ -183,19 +183,3 @@ else:
 if num_epochs > 1:
     plots.plot_accuracy(figures_dir, 'accuracy_epochs_resnet50', history)
     plots.plot_loss(figures_dir, 'loss_epochs_resnet50', history)
-
-# evaluate on test set
-test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
-test_loss = pretrained_model.evaluate_generator(test_gen, steps=nbatches_test)
-print('Loss test set: ' + str(test_loss[0]))
-print('Accuracy test set: ' + str(test_loss[1]))
-print('Mean absolute bin error test set: ' + str(test_loss[2]))
-
-# predict on test set
-test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
-predictions = pretrained_model.predict_generator(test_gen, steps=nbatches_test)
-
-# plot confusion matrix
-test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
-plots.plot_confusion_matrix(figures_dir, 'confusion_matrix_resnet50',
-                            test_gen, df_test.shape[0], label_encoder, predictions, show_values=True)
