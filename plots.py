@@ -3,7 +3,6 @@ import itertools
 import numpy as np
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 from scipy import interp
-from itertools import cycle
 import os
 
 def plot_accuracy(figures_dir, filename, history):
@@ -147,3 +146,5 @@ def plot_ROC(figures_dir, filename, test_gen, test_length, label_encoder, predic
     plt.legend(loc="lower right")
     plt.savefig(os.path.join(figures_dir, filename), ext='png', dpi=150)
     plt.show()
+
+    return roc_auc["micro"], roc_auc["macro"]
