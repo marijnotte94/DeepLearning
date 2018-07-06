@@ -54,6 +54,7 @@ df = df.drop(['source', 'pixelsx', 'pixelsy', 'size_bytes', 'count'], axis=1)
 df.rename(columns=({'new_filename': 'filename'}), inplace=True)
 
 # create train, validation and test sets
+print('Total samples: ', df.shape[0])
 df_train, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df['date'].values)
 df_train, df_validation = train_test_split(df_train, test_size=0.1, random_state=42, stratify=df_train['date'].values)
 

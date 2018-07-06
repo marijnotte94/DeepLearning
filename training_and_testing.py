@@ -143,8 +143,8 @@ def vgg16_model(img_shape, num_classes, learning_rate, num_frozen_layers):
 model = 'resnet50' # 'resnet50' or 'vgg16'
 bin_size = '20' # [1, 5, 10, 20, 50, 100] years
 learning_rate = 0.0001
-batch_size = 64
-num_epochs = 100
+batch_size = 16
+num_epochs = 1
 num_frozen_layers = 0 # freeze first num layers, ResNet50 has 175 layers, VGG16 has 19 layers
 use_class_weights = True
 early_stopping_patience = 5 # how many epochs without improvement
@@ -196,9 +196,9 @@ checkpoint = ModelCheckpoint('{0}/checkpoint.hdf5'.format(checkpoint_dir),
 # training the model
 early_stopping = EarlyStopping(monitor='val_acc', min_delta=0, patience=early_stopping_patience)
 if use_class_weights:
-    history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+    history = pretrained_model.fit_generator(train_gen, steps_per_epoch=10, epochs=num_epochs,
                                              class_weight=class_weights,
-                                             validation_data=validation_gen, validation_steps=nbatches_validation,
+                                             validation_data=validation_gen, validation_steps=10,
                                              callbacks=[early_stopping, checkpoint])
 else:
     history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
@@ -230,11 +230,23 @@ print('Mean absolute bin error test set: ', test_mean_absolute_bin_error)
 test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
 predictions = pretrained_model.predict_generator(test_gen, steps=nbatches_test)
 
+# get true labels from generator
+test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
+y_true = []
+for i in range(df_test.shape[0]):
+    _, label = next(test_gen)
+    y_true.append(label)
+
+# inverse transform true labels
+y_true = np.array(y_true).argmax(axis=-1)
+y_true = label_encoder.inverse_transform(y_true)
+
 # save predictions to csv
 y_pred = predictions.argmax(axis=-1)
 y_pred = label_encoder.inverse_transform(y_pred)
 df_results = pd.read_csv(os.path.join('data', 'test.csv'))
 df_predictions = pd.DataFrame(y_pred)
+df_results['ytrue'] = pd.DataFrame(y_true)
 df_results['predictions'] = df_predictions
 df_results.to_csv(os.path.join(results_dir, 'predictions.csv'), index=False)
 

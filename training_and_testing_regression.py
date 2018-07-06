@@ -4,7 +4,6 @@ from keras.models import Model, load_model
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.applications import resnet50, vgg16
-from keras.utils import to_categorical
 import keras.backend as K
 import numpy as np
 import pandas as pd
@@ -226,21 +225,3 @@ df_results = pd.read_csv(os.path.join('data', 'test.csv'))
 df_predictions = pd.DataFrame(y_pred)
 df_results['predictions'] = df_predictions
 df_results.to_csv(os.path.join(results_dir, 'predictions.csv'), index=False)
-
-# # plot confusion matrix
-# test_gen = custom_generator(df_test, bin_size, False, (224, 224), 1)
-# plots.plot_confusion_matrix(results_dir, 'confusion_matrix',
-#                             test_gen, df_test.shape[0], label_encoder, predictions, show_values=True)
-#
-# # plot ROC curves
-# auc_micro, auc_macro = plots.plot_ROC(results_dir, 'roc_curves', test_gen, df_test.shape[0], label_encoder, predictions)
-
-# # save results
-# d = {'model': [model], 'learning_rate': [learning_rate], 'batch_size': [batch_size],
-#      'num_frozen_layers': [num_frozen_layers], 'use_class_weights': [use_class_weights], 'bin_size': [bin_size],
-#      'test_loss': [test_loss], 'test_accuracy': [test_accuracy], 'test_mean_absolute_bin': [test_mean_absolute_bin_error],
-#      'micro_auc': [auc_micro], 'macro_auc': [auc_macro], 'folder': [start_time]}
-# df_parameters = pd.DataFrame(d, columns=['model', 'learning_rate', 'batch_size', 'num_frozen_layers', 'use_class_weights',
-#                                           'bin_size', 'test_loss', 'test_accuracy', 'test_mean_absolute_bin',
-#                                           'micro_auc', 'macro_auc', 'folder'])
-# df_parameters.to_csv(os.path.join(results_dir, 'results.csv'), index=False)

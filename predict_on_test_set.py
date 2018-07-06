@@ -98,6 +98,9 @@ class_weights = {class_id : max_val/num_images for class_id, num_images in count
 
 # dir for saving figures
 figures_dir = os.path.join('figures', str(bin_size))
+results_dir = os.path.join('results', str(bin_size))
+if not os.path.isdir(results_dir):
+    os.makedirs(results_dir)
 
 # load model
 checkpoint_filename = 'resnet50_1e-4_false.hdf5' # change to checkpoint filename
@@ -110,21 +113,29 @@ print('Learning rate: ', K.eval(pretrained_model.optimizer.lr))
 # model summary
 pretrained_model.summary()
 
-# evaluate on test set
-test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
-test_loss = pretrained_model.evaluate_generator(test_gen, steps=nbatches_test)
-print('Loss test set: ' + str(test_loss[0]))
-print('Accuracy test set: ' + str(test_loss[1]))
-print('Mean absolute bin error test set: ' + str(test_loss[2]))
+# # evaluate on test set
+# test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
+# test_loss = pretrained_model.evaluate_generator(test_gen, steps=nbatches_test)
+# print('Loss test set: ' + str(test_loss[0]))
+# print('Accuracy test set: ' + str(test_loss[1]))
+# print('Mean absolute bin error test set: ' + str(test_loss[2]))
 
 # predict on test set
 test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
 predictions = pretrained_model.predict_generator(test_gen, steps=nbatches_test)
 
-# plot confusion matrix
-test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
-plots.plot_confusion_matrix(figures_dir, 'confusion_' + checkpoint_filename[:-5],
-                            test_gen, df_test.shape[0], label_encoder, predictions, show_values=True)
+# # save predictions to csv
+# y_pred = predictions.argmax(axis=-1)
+# y_pred = label_encoder.inverse_transform(y_pred)
+# df_results = pd.read_csv(os.path.join('data', 'test.csv'))
+# df_predictions = pd.DataFrame(y_pred)
+# df_results['predictions'] = df_predictions
+# df_results.to_csv(os.path.join(results_dir, 'results.csv'), index=False)
+
+# # plot confusion matrix
+# test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
+# plots.plot_confusion_matrix(figures_dir, 'confusion_' + checkpoint_filename[:-5],
+#                             test_gen, df_test.shape[0], label_encoder, predictions, show_values=True)
 
 # plot ROC curves
 plots.plot_ROC(figures_dir, 'ROC_' + checkpoint_filename[:-5], test_gen, df_test.shape[0], label_encoder, predictions)

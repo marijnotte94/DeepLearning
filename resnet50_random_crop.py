@@ -112,7 +112,7 @@ def pretrained_model(img_shape, num_classes, learning_rate, num_frozen_layers):
 # hyperparameters
 learning_rate = 0.0001
 batch_size = 16
-num_epochs = 100
+num_epochs = 1
 num_frozen_layers = 0 # freeze first num layers, ResNet50 has 175 layers
 save_checkpoint = True
 use_class_weights = True
@@ -143,6 +143,11 @@ validation_gen = custom_generator(df_validation, label_encoder, bin_size, False,
 # dir for saving figures
 figures_dir = os.path.join('figures', str(bin_size))
 
+# dir for saving results
+results_dir = os.path.join('results', str(bin_size))
+if not os.path.isdir(results_dir):
+    os.makedirs(results_dir)
+
 # compile model
 pretrained_model = pretrained_model((224, 224, 3), num_classes, learning_rate, num_frozen_layers)
 
@@ -160,9 +165,9 @@ checkpoint = ModelCheckpoint('{0}/resnet50_best.hdf5'.format(checkpoint_dir),
 early_stopping = EarlyStopping(monitor='val_acc', min_delta=0, patience=2)
 if save_checkpoint:
     if use_class_weights:
-        history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
+        history = pretrained_model.fit_generator(train_gen, steps_per_epoch=1, epochs=num_epochs,
                                                 class_weight=class_weights,
-                                                validation_data=validation_gen, validation_steps=nbatches_validation,
+                                                validation_data=validation_gen, validation_steps=1,
                                                 callbacks=[early_stopping, checkpoint])
     else:
         history = pretrained_model.fit_generator(train_gen, steps_per_epoch=nbatches_train, epochs=num_epochs,
@@ -183,3 +188,48 @@ else:
 if num_epochs > 1:
     plots.plot_accuracy(figures_dir, 'accuracy_epochs_resnet50', history)
     plots.plot_loss(figures_dir, 'loss_epochs_resnet50', history)
+
+# load model
+checkpoint_filename = 'resnet50_best.hdf5'
+checkpoint_dir = os.path.join('checkpoints', str(bin_size))
+checkpoint_path = os.path.join(checkpoint_dir, checkpoint_filename)
+pretrained_model = load_model(checkpoint_path, custom_objects={'mean_absolute_bin_error': mean_absolute_bin_error})
+
+# evaluate on test set
+test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
+test_results = pretrained_model.evaluate_generator(test_gen, steps=nbatches_test)
+test_loss = test_results[0]
+test_accuracy = test_results[1]
+test_mean_absolute_bin_error = test_results[2]
+print('Loss test set: ', test_loss)
+print('Accuracy test set: ', test_accuracy)
+print('Mean absolute bin error test set: ', test_mean_absolute_bin_error)
+
+# predict on test set
+test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
+predictions = pretrained_model.predict_generator(test_gen, steps=nbatches_test)
+
+# save predictions to csv
+y_pred = predictions.argmax(axis=-1)
+y_pred = label_encoder.inverse_transform(y_pred)
+df_results = pd.read_csv(os.path.join('data', 'test.csv'))
+df_predictions = pd.DataFrame(y_pred)
+df_results['predictions'] = df_predictions
+df_results.to_csv(os.path.join(results_dir, 'predictions.csv'), index=False)
+
+# plot confusion matrix
+test_gen = custom_generator(df_test, label_encoder, bin_size, False, (224, 224), 1)
+plots.plot_confusion_matrix(figures_dir, 'confusion_' + checkpoint_filename[:-5],
+                            test_gen, df_test.shape[0], label_encoder, predictions, show_values=True)
+
+# plot ROC curves
+auc_micro, auc_macro = plots.plot_ROC(figures_dir, 'ROC_' + checkpoint_filename[:-5], test_gen, df_test.shape[0],
+                                      label_encoder, predictions)
+
+# save results
+d = {'learning_rate': [learning_rate], 'batch_size': [batch_size], 'num_frozen_layers': [num_frozen_layers],
+     'use_class_weights': [use_class_weights], 'bin_size': [bin_size],
+     'test_loss': [test_loss], 'test_accuracy': [test_accuracy], 'test_mean_absolute_bin': [test_mean_absolute_bin_error],
+     'micro_auc': [auc_micro], 'macro_auc': [auc_macro]}
+df_parameters = pd.DataFrame(d)
+df_parameters.to_csv(os.path.join(results_dir, 'results.csv'), index=False)
